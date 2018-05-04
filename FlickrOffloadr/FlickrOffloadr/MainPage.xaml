@@ -6,84 +6,33 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:interactivity="using:Microsoft.Xaml.Interactivity"
       xmlns:core="using:Microsoft.Xaml.Interactions.Core"
+      xmlns:convert="using:FlickrOffloadr.Convert.ValueConverter"
       x:Class="FlickrOffloadr.MainPage"
       mc:Ignorable="d ignore"
       DataContext="{Binding Main, Source={StaticResource Locator}}">
+    <Page.Resources>
+        <convert:BoolToVisibilityConverter x:Key="BoolToVisConverter" />
+        <convert:ReverseBoolToVisibilityConverter x:Key="ReverseBoolToVisConverter" />
+    </Page.Resources>
 
     <Grid>
-        <Grid.Background>
-            <LinearGradientBrush EndPoint="0.906,1.164"
-                                 StartPoint="0.244,-0.159">
-                <GradientStop Color="#FFA20000"
-                              Offset="0" />
-                <GradientStop Color="#FFCD7C10"
-                              Offset="1" />
-            </LinearGradientBrush>
-        </Grid.Background>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="ProcessStates">
+                <VisualState x:Name="VisualState"/>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <Grid x:Name="StepOne" Visibility="{Binding IsApiUiVisible, Converter={StaticResource BoolToVisConverter}}">
+            <StackPanel HorizontalAlignment="Center">
+                <TextBlock Text="Enter your Flickr API key" Margin="8" HorizontalAlignment="Center">
+                </TextBlock>
+                <TextBox x:Name="ApiKeyBox" Text="{Binding ApiKey, Mode=TwoWay}" KeyUp="TextBox_KeyUp"  Width="300" HorizontalAlignment="Center"/>
+                <Button Content="Apply This Key" Margin="8" Command="{Binding SetApiKeyCommand, Mode=OneWay}" HorizontalAlignment="Center"/>
+                <HyperlinkButton Content="What is a Flickr API key and how do I get it?" NavigateUri="https://www.flickr.com/services/api/misc.api_keys.html" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+        <Grid x:Name="MainGrid" Visibility="{Binding IsMainUiVisible, Converter={StaticResource BoolToVisConverter}}">
+            <TextBlock Text="This is the normal ui" />
 
-        <StackPanel Background="#FF1F1F1F"
-                    Width="300"
-                    HorizontalAlignment="Center"
-                    Height="450"
-                    VerticalAlignment="Center">
-            <Button Content="Increment counter"
-                    HorizontalAlignment="Stretch"
-                    Margin="0,0,0,20"
-                    FontSize="24"
-                    Command="{Binding IncrementCommand, Mode=OneWay}"
-                    Foreground="White" />
-
-            <TextBlock Text="Navigate to page 2"
-                       HorizontalAlignment="Stretch"
-                       Margin="0,0,0,20"
-                       FontSize="24"
-                       Foreground="White"
-                       TextAlignment="Center">
-
-                <interactivity:Interaction.Behaviors>
-                    <core:EventTriggerBehavior EventName="Tapped">
-            			<core:InvokeCommandAction Command="{Binding NavigateCommand, Mode=OneWay}"
-                                                  CommandParameter="{Binding Text, ElementName=NavigationParameterText}" />
-            		</core:EventTriggerBehavior>
-                </interactivity:Interaction.Behaviors>
-
-            </TextBlock>
-
-            <TextBox x:Name="NavigationParameterText"
-                     Text="Enter any text for nav..."
-                     Margin="0,0,0,20"
-                     FontSize="24"
-                     Foreground="White" />
-
-            <Button Content="Show a dialog"
-                    HorizontalAlignment="Stretch"
-                    Margin="0,0,0,20"
-                    FontSize="24"
-                    Command="{Binding ShowDialogCommand, Mode=OneWay}"
-                    Foreground="White" />
-
-            <Button Content="Send message"
-                    HorizontalAlignment="Stretch"
-                    Margin="0,0,0,20"
-                    FontSize="24"
-                    Command="{Binding SendMessageCommand, Mode=OneWay}"
-                    Foreground="White" />
-
-            <TextBlock TextWrapping="Wrap"
-                       Text="{Binding WelcomeTitle}"
-                       FontFamily="Segoe UI Light"
-                       FontSize="24"
-                       Margin="0,0,0,20"
-                       HorizontalAlignment="Center"
-                       TextAlignment="Center"
-                       Foreground="White" />
-
-            <TextBlock FontFamily="Segoe UI Light"
-                       FontSize="20"
-                       HorizontalAlignment="Center"
-                       TextAlignment="Center"
-                       Foreground="White"
-                       Text="{Binding Clock}" />
-        </StackPanel>
+        </Grid>
     </Grid>
 </Page>

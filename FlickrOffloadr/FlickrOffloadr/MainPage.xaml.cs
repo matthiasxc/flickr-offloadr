@@ -16,7 +16,6 @@ namespace FlickrOffloadr
 
             Loaded += (s, e) =>
             {
-                Vm.RunClock();
             };
         }
 
@@ -31,8 +30,16 @@ namespace FlickrOffloadr
 
         protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
         {
-            Vm.StopClock();
             base.OnNavigatingFrom(e);
+        }
+
+        private void TextBox_KeyUp(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
+        {
+            if(e.Key == Windows.System.VirtualKey.Enter)
+            {
+                Vm.SetApiKeyCommand.Execute(null);
+            }
+            
         }
     }
 }

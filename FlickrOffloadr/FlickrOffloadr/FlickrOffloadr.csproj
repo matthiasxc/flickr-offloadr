@@ -96,14 +96,19 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="AppStates\MainPageState.cs" />
     <Compile Include="Convert\Json\BoolConverter.cs" />
     <Compile Include="Convert\Json\UnixToDateTimeConverter.cs" />
+    <Compile Include="Convert\ValueConverter\BoolToVisibilityConverter.cs" />
     <Compile Include="Design\DesignDataService.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
     <Compile Include="Model\DataItem.cs" />
     <Compile Include="Model\DataService.cs" />
+    <Compile Include="Model\FlickrModels\FlickrUser.cs" />
+    <Compile Include="Model\FlickrModels\PhotoDetails.cs" />
+    <Compile Include="Model\FlickrModels\PhotoSizes.cs" />
     <Compile Include="Model\FlickrModels\PublicPhotos.cs" />
     <Compile Include="Model\IDataService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -143,9 +148,7 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Convert\ValueConverter\" />
-  </ItemGroup>
+  <ItemGroup />
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>15.0</VisualStudioVersion>
   </PropertyGroup>
