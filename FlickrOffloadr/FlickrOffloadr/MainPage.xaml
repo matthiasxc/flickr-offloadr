@@ -22,7 +22,7 @@
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
         <Grid x:Name="StepOne" Visibility="{Binding IsApiUiVisible, Converter={StaticResource BoolToVisConverter}}">
-            <StackPanel HorizontalAlignment="Center">
+            <StackPanel HorizontalAlignment="Center" Margin="0,100,0,0">
                 <TextBlock Text="Enter your Flickr API key" Margin="8" HorizontalAlignment="Center">
                 </TextBlock>
                 <TextBox x:Name="ApiKeyBox" Text="{Binding ApiKey, Mode=TwoWay}" KeyUp="TextBox_KeyUp"  Width="300" HorizontalAlignment="Center"/>
@@ -31,7 +31,37 @@
             </StackPanel>
         </Grid>
         <Grid x:Name="MainGrid" Visibility="{Binding IsMainUiVisible, Converter={StaticResource BoolToVisConverter}}">
-            <TextBlock Text="This is the normal ui" />
+            <Grid x:Name="SelectFolderGrid" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsTargetFolderSelected, Converter={StaticResource ReverseBoolToVisConverter}}">
+                <StackPanel>
+                    <TextBlock Text="Select a folder to save your photos into" Margin="8" HorizontalAlignment="Center" />
+                    <Button Command="{Binding SelectTargetFolderCommand, Mode=OneWay}" Margin="8" HorizontalAlignment="Center">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xED43;" Margin="8" FontSize="120"/>
+                            <TextBlock Grid.Row="1" Text="Pick a folder" Margin="8"/>
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <Grid x:Name="StandardScreen" Visibility="{Binding IsTargetFolderSelected, Converter={StaticResource BoolToVisConverter}}">
+                <TextBlock Text="Enter the username you'd like to offload" />
+                <TextBox Text="{Binding TargetUser, Mode=TwoWay}" />
+                <Button Command="{Binding GetFlickrUserCommand, Mode=OneWay}" Margin="8" HorizontalAlignment="Center">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xEB9F;" Margin="8" FontSize="120"/>
+                        <TextBlock Grid.Row="1" Text="get user photos" Margin="8"/>
+                    </Grid>
+                </Button> 
+
+            </Grid>
 
         </Grid>
     </Grid>

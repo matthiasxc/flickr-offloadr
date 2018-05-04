@@ -9,6 +9,9 @@ using Microsoft.Practices.ServiceLocation;
 using FlickrOffloadr.Model;
 using Windows.Storage;
 using Windows.Storage.AccessCache;
+using System.Net.Http;
+using FlickrOffloadr.Model.FlickrModels;
+using Newtonsoft.Json;
 
 namespace FlickrOffloadr.ViewModel
 {
@@ -20,6 +23,11 @@ namespace FlickrOffloadr.ViewModel
     /// </summary>
     public class MainViewModel : ViewModelBase
     {
+        private readonly string _userUrl = "https://api.flickr.com/services/rest/?method=flickr.urls.lookupUser&api_key={0}&url=https%3A%2F%2Fwww.flickr.com%2Fphotos%2F{1}%2F&format=json&nojsoncallback=1";
+        private readonly string _publicPhotosUrl = "https://api.flickr.com/services/rest/?method=flickr.people.getPublicPhotos&api_key={0}&user_id={1}&per_page=500&format=json&nojsoncallback=1&page={2}";
+        private readonly string _photoSizesUrl = "https://api.flickr.com/services/rest/?method=flickr.photos.getSizes&api_key={0}&photo_id={1}&format=json&nojsoncallback=1";
+        private readonly string _photoDetails = " https://api.flickr.com/services/rest/?method=flickr.photos.getInfo&api_key={0}&photo_id={1}&format=json&nojsoncallback=1";
+
         private readonly IDataService _dataService;
         private readonly INavigationService _navigationService;
         private readonly string _apiKeyValue = "flickrApiKey"; 
@@ -57,13 +65,27 @@ namespace FlickrOffloadr.ViewModel
             set { Set(ref _apiKey, value); }
         }
 
-        private string _lastUser = "";
-        public string LastUser
+        private string _targetUser = "";
+        public string TargetUser
         {
-            get { return _lastUser; }
-            set { Set(ref _lastUser, value); }
+            get { return _targetUser; }
+            set { Set(ref _targetUser, value); }
         }
-        
+
+        private FlickrUser _searchedUser;
+        public FlickrUser SearchedUser
+        {
+            get { return _searchedUser; }
+            set { Set(ref _searchedUser, value); }
+        }
+
+        private bool _isTargetFolderSelected = false;
+        public bool IsTargetFolderSelected
+        {
+            get { return _isTargetFolderSelected; }
+            set { Set(ref _isTargetFolderSelected, value); }
+        }
+
         private StorageFolder _targetFolder;
         public StorageFolder TargetFolder
         {
@@ -90,7 +112,11 @@ namespace FlickrOffloadr.ViewModel
 
                 IsApiUiVisible = String.IsNullOrEmpty(ApiKey);
                 IsMainUiVisible = !IsApiUiVisible;
-                
+
+                if (TargetFolder != null)
+                {
+                    IsTargetFolderSelected = true;
+                }
 
                 var item = await _dataService.GetData();
             }
@@ -101,6 +127,7 @@ namespace FlickrOffloadr.ViewModel
 
         #region Commands
 
+        #region SetApiKeyCommand
         private RelayCommand _setApiCommand;
 
         /// <summary>
@@ -115,9 +142,84 @@ namespace FlickrOffloadr.ViewModel
                     () =>
                     {
                         SaveSettings();
+                        IsApiUiVisible = String.IsNullOrEmpty(ApiKey);
+                        IsMainUiVisible = !IsApiUiVisible;
                     }));
             }
         }
+        #endregion
+
+        #region SelectTargetFolderCommand
+        private RelayCommand _selectTargetFolder;
+
+        /// <summary>
+        /// Gets the SelectTargetFolder.
+        /// </summary>
+        public RelayCommand SelectTargetFolderCommand
+        {
+            get
+            {
+                return _selectTargetFolder
+                    ?? (_selectTargetFolder = new RelayCommand(
+                    async () =>
+                    {
+                        Windows.Storage.ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+
+                        var picker = new Windows.Storage.Pickers.FolderPicker();
+                        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Desktop;
+                        picker.FileTypeFilter.Add("*");
+
+                        var folder = await picker.PickSingleFolderAsync();
+                        //  https://docs.microsoft.com/en-us/windows/uwp/files/quickstart-using-file-and-folder-pickers
+                        if(folder != null)
+                        {
+                            TargetFolder = folder;
+                            SaveSettings();
+                            IsTargetFolderSelected = true;
+                        }
+                    }));
+            }
+        }
+        #endregion
+
+        #region GetFlickrUserCommand
+        private RelayCommand _getFlickrUser;
+
+        /// <summary>
+        /// Gets the GetFlickrUser.
+        /// </summary>
+        public RelayCommand GetFlickrUserCommand
+        {
+            get
+            {
+                return _getFlickrUser
+                    ?? (_getFlickrUser = new RelayCommand(
+                    async () =>
+                    {
+                        string userUrl = String.Format(_userUrl, _apiKey, TargetUser);
+                        using (var client = new HttpClient())
+                        {
+                            var result = await client.GetStringAsync(new Uri(userUrl));
+
+                            UserCall typedResult = JsonConvert.DeserializeObject<UserCall>(result);
+                            if (typedResult.Stat == "ok")
+                            {
+                                _searchedUser = typedResult.User;
+                            }
+                            else
+                            {
+                                return;
+                            }
+                        }
+
+                        // OK, we've got our user, let's grab the public photos
+
+                        GetPublicImagesCommand.Execute(null);
+
+                    }));
+            }
+        }
+        #endregion
 
         #endregion
 
@@ -127,7 +229,7 @@ namespace FlickrOffloadr.ViewModel
         {
             var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
             localSettings.Values[_apiKeyValue] = _apiKey;
-            localSettings.Values[_lastUserKeyValue] = _lastUser;
+            localSettings.Values[_lastUserKeyValue] = _targetUser;
             if(_targetFolder != null)
             { 
                 localSettings.Values[_targetFolderKeyValue] = StorageApplicationPermissions.FutureAccessList.Add(_targetFolder);
@@ -145,7 +247,7 @@ namespace FlickrOffloadr.ViewModel
 
             if (localSettings.Values.ContainsKey(_apiKeyValue))
             {
-                LastUser = (string)localSettings.Values[_lastUserKeyValue];
+                TargetUser = (string)localSettings.Values[_lastUserKeyValue];
             }
 
             if (localSettings.Values.ContainsKey(_targetFolderKeyValue))
