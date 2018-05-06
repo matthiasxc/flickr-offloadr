@@ -100,6 +100,7 @@
     <Compile Include="Convert\Json\BoolConverter.cs" />
     <Compile Include="Convert\Json\UnixToDateTimeConverter.cs" />
     <Compile Include="Convert\ValueConverter\BoolToVisibilityConverter.cs" />
+    <Compile Include="Convert\ValueConverter\StringFormatConverter.cs" />
     <Compile Include="Design\DesignDataService.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>

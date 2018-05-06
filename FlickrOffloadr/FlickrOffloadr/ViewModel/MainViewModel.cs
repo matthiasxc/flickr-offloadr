@@ -12,6 +12,11 @@ using Windows.Storage.AccessCache;
 using System.Net.Http;
 using FlickrOffloadr.Model.FlickrModels;
 using Newtonsoft.Json;
+using System.Collections.ObjectModel;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.IO;
 
 namespace FlickrOffloadr.ViewModel
 {
@@ -92,7 +97,117 @@ namespace FlickrOffloadr.ViewModel
             get { return _targetFolder; }
             set { Set(ref _targetFolder, value); }
         }
-        
+
+        private ObservableCollection<Photo> _publicPhotos = new ObservableCollection<Photo>();
+        public ObservableCollection<Photo> PublicPhotos
+        {
+            get { return _publicPhotos; }
+            set { Set(ref _publicPhotos, value); }
+        }
+
+        private ObservableCollection<Photo> _photosToSave = new ObservableCollection<Photo>();
+        public ObservableCollection<Photo> PhotosToSave
+        {
+            get { return _photosToSave; }
+            set { Set(ref _photosToSave, value); }
+        }
+
+        private int _currentPage = 1;
+        public int CurrentPage
+        {
+            get { return _currentPage; }
+            set { Set(ref _currentPage, value); }
+        }
+
+        private int _pageCount = 0;
+        public int PageCount
+        {
+            get { return _pageCount; }
+            set { Set(ref _pageCount, value); }
+        }
+
+        #region Progress Properties 
+
+        private int _totalPhotoCount= 0;
+        public int TotalPhotoCount
+        {
+            get { return _totalPhotoCount; }
+            set { Set(ref _totalPhotoCount, value); }
+        }
+
+        private int _downloadedFilesCount = 0;
+        public int DownloadedFilesCount
+        {
+            get { return _downloadedFilesCount; }
+            set { Set(ref _downloadedFilesCount, value); }
+        }
+
+        private string _estimatedDownloadTime = "";
+        public string EstimatedDownloadTime
+        {
+            get { return _estimatedDownloadTime; }
+            set { Set(ref _estimatedDownloadTime, value); }
+        }
+
+        private string _remainingDownloadTime = "";
+        public string RemainingDownloadTime
+        {
+            get { return _remainingDownloadTime; }
+            set { Set(ref _remainingDownloadTime, value); }
+        }
+
+        private TimeSpan _downloadDelay = new TimeSpan(0, 0, 0, 0, 2300);
+        public TimeSpan DownloadDelay
+        {
+            get { return _downloadDelay; }
+            set { Set(ref _downloadDelay, value); }
+        }
+
+        private string _downloadStatus = "";
+        public string DownloadStatus
+        {
+            get { return _downloadStatus; }
+            set { Set(ref _downloadStatus, value); }
+        }
+
+        private string _runningTime = "";
+        public string RunningTime
+        {
+            get { return _runningTime; }
+            set { Set(ref _runningTime, value); }
+        }
+
+
+        private double _percentDone = 0.0;
+        public double PercentDone
+        {
+            get { return _percentDone; }
+            set { Set(ref _percentDone, value); }
+        }
+
+        private bool _isDownloading = false;
+        public bool IsDownloading
+        {
+            get { return _isDownloading; }
+            set { Set(ref _isDownloading, value); }
+        }
+
+        private bool _isCheckingPhotos = false;
+        public bool IsCheckingPhotos
+        {
+            get { return _isCheckingPhotos; }
+            set { Set(ref _isCheckingPhotos, value); }
+        }
+
+        private string _downloadingPhoto= "";
+        public string DownloadingPhoto
+        {
+            get { return _downloadingPhoto; }
+            set { Set(ref _downloadingPhoto, value); }
+        }
+
+        #endregion
+
         #endregion
 
         public MainViewModel(
@@ -144,6 +259,7 @@ namespace FlickrOffloadr.ViewModel
                         SaveSettings();
                         IsApiUiVisible = String.IsNullOrEmpty(ApiKey);
                         IsMainUiVisible = !IsApiUiVisible;
+                        // TODO: test the api key to make sure it is valid
                     }));
             }
         }
@@ -221,7 +337,225 @@ namespace FlickrOffloadr.ViewModel
         }
         #endregion
 
+        #region GetPublicImagesCommand
+        private RelayCommand _getPublicImagesCommand;
+
+        /// <summary>
+        /// Gets the GetPublicImagesCommand.
+        /// </summary>
+        public RelayCommand GetPublicImagesCommand
+        {
+            get
+            {
+                return _getPublicImagesCommand
+                    ?? (_getPublicImagesCommand = new RelayCommand(
+                    async () =>
+                    {
+                        PublicPhotos.Clear();
+                        string publicPhotoUrl = String.Format(_publicPhotosUrl, _apiKey, _searchedUser.Id, CurrentPage);
+                        PublicPhotos publicPhotos = null;
+                        IsCheckingPhotos = true;
+                        using (var client = new HttpClient())
+                        {
+                            var result = await client.GetStringAsync(new Uri(publicPhotoUrl));
+
+                            publicPhotos = JsonConvert.DeserializeObject<PublicPhotos>(result);
+                        }
+
+                        if (publicPhotos != null)
+                        {
+
+                            //int currentPage = publicPhotos.Photos.Page;
+                            //int pageCount = publicPhotos.Photos.Pages;
+
+                            //for (int i = 0; i < publicPhotos.Photos.PhotoList.Count; i++)
+                            //{
+                            //    publicPhotos.Photos.PhotoList[i].PhotoDetailsUrl = String.Format(_photoSizesUrl, _apiKey, publicPhotos.Photos.PhotoList[i].Id);
+                            //    publicPhotos.Photos.PhotoList[i].PhotoThumb = String.Format("https://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg",
+                            //                                                                publicPhotos.Photos.PhotoList[i].Farm,
+                            //                                                                publicPhotos.Photos.PhotoList[i].Server,
+                            //                                                                publicPhotos.Photos.PhotoList[i].Id,
+                            //                                                                publicPhotos.Photos.PhotoList[i].Secret);
+                            //}
+
+                            TotalPhotoCount = System.Convert.ToInt32(publicPhotos.Photos.Total);
+                            PageCount = publicPhotos.Photos.Pages;
+                        }
+
+                        // Look at the already downloaded files in that directory. 
+                        //  Remove them from the list of files to download
+                        IReadOnlyList<StorageFile> fileList = await TargetFolder.GetFilesAsync();
+                        List<string> downloadedFiles = new List<string>();
+                        foreach (StorageFile file in fileList)
+                        {
+                            downloadedFiles.Add(file.Name);
+                        }
+
+                        for (int i = 1; i <= PageCount; i++)
+                        {
+                            Debug.WriteLine("Loading Photos from page " + i.ToString());
+                            string photoPageUrl = String.Format(_publicPhotosUrl, _apiKey, _searchedUser.Id, i);
+                            PublicPhotos publicPhotosHolder = null;
+                            using (var client = new HttpClient())
+                            {
+                                var result = await client.GetStringAsync(new Uri(photoPageUrl));
+
+                                publicPhotosHolder = JsonConvert.DeserializeObject<PublicPhotos>(result);
+                            }
+                            // select all the photos we haven't already downloaded
+                            foreach (Photo photo in publicPhotosHolder.Photos.PhotoList)
+                            {
+                                photo.PhotoDetailsUrl = String.Format(_photoSizesUrl, _apiKey, photo.Id);
+                                photo.PhotoThumb = String.Format("https://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg",
+                                                                                            photo.Farm,
+                                                                                            photo.Server,
+                                                                                            photo.Id,
+                                                                                            photo.Secret);
+                                PublicPhotos.Add(photo);
+
+                                foreach (char c in System.IO.Path.GetInvalidFileNameChars())
+                                {
+                                    photo.Title = photo.Title.Replace(c, '_');
+                                }
+
+                                var existingFile = downloadedFiles.FirstOrDefault(f => f.Contains(photo.Title));
+                                if (existingFile == null)
+                                {
+                                    PhotosToSave.Add(photo);
+                                }
+                                else
+                                {
+                                    DownloadedFilesCount++;
+                                    //Debug.WriteLine("Already Downloaded: " + photo.Title);
+                                }
+                            }
+
+                            await Task.Delay(100);
+                        }
+                        IsCheckingPhotos = false;
+
+                        TimeSpan estTime = new TimeSpan(0, 0, 0, 0, System.Convert.ToInt32(PhotosToSave.Count * _downloadDelay.TotalMilliseconds));
+                        EstimatedDownloadTime = "Estimated Download Time: " + estTime.ToString(@"hh\:mm\:ss");
+            }));
+            }
+        }
         #endregion
+
+        #region SelectAllPagesCommand
+        private RelayCommand _downloadAllPagesCommand;
+
+        /// <summary>
+        /// Gets the SelectAllPagesCommand.
+        /// </summary>
+        public RelayCommand DownloadAllPagesCommand
+        {
+            get
+            {
+                return _downloadAllPagesCommand
+                ?? (_downloadAllPagesCommand = new RelayCommand(
+                async () =>
+                {
+                    IsDownloading = true;
+                    int photoDownloadCount = PhotosToSave.Count;
+                    int currentCount = 0;
+                    DateTime startTime = DateTime.Now;
+                    for (int i = 0; i < PhotosToSave.Count; i++)
+                    {
+                        currentCount++;
+                        DownloadStatus = "Downloading Photo " + currentCount + " of " + PhotosToSave.Count;
+
+                        DownloadingPhoto = PhotosToSave[i].PhotoThumb;
+
+                        try
+                        {
+                            // Get the appropriate format and date info for the photo
+                            using (var client = new HttpClient())
+                            {
+                                string photoFormatUrl = String.Format(_photoDetails, _apiKey, PhotosToSave[i].Id);
+                                var detailsResult = await client.GetStringAsync(new Uri(photoFormatUrl));
+                                var photoWithFormat = JsonConvert.DeserializeObject<PhotoDetails>(detailsResult);
+                                PhotosToSave[i].Format = photoWithFormat.Photo.Format;
+                                PhotosToSave[i].Dates = photoWithFormat.Photo.Dates;
+                            }
+
+                            PhotosToSave[i].PhotoDetailsUrl = String.Format(_photoSizesUrl, _apiKey, PhotosToSave[i].Id);
+                            // Get the links to the original file
+                            using (var client = new HttpClient())
+                            {
+                                var result = await client.GetStringAsync(new Uri(PhotosToSave[i].PhotoDetailsUrl));
+                                var photoDetailsResult = JsonConvert.DeserializeObject<PhotoSizes>(result);
+                                PhotosToSave[i].Details = photoDetailsResult.Sizes;
+                            }
+
+                            TimeSpan remainingTime = new TimeSpan(0, 0, 0, 0, System.Convert.ToInt32((PhotosToSave.Count - i) * _downloadDelay.TotalMilliseconds));
+                            RemainingDownloadTime = "Download Complete in: " + remainingTime.ToString(@"hh\:mm\:ss");
+
+                            TimeSpan runningTime = DateTime.Now - startTime;
+                            RunningTime = "Running Time: " + runningTime.ToString(@"hh\:mm\:ss"); 
+
+                            PercentDone = System.Convert.ToDouble(i) / System.Convert.ToDouble(PhotosToSave.Count);
+
+                            await SaveFileFromPhotoDetails(PhotosToSave[i]);
+
+                            await Task.Delay(DownloadDelay);
+
+                        }
+                        catch
+                        {
+                            Debug.WriteLine("Failed to load " + PhotosToSave[i].Id + " (" + PhotosToSave[i].Title + ")");
+                        }
+
+                    }
+
+                    IsDownloading = false;
+
+                }));
+            }
+        }
+
+        #endregion
+
+        #endregion
+
+        private async Task<bool> SaveFileFromPhotoDetails(Photo photo)
+        {
+            if (photo.Details != null && photo.Details.CanDownload)
+            {
+                try
+                {
+                    var originalPhoto = photo.Details.Sizes.FirstOrDefault(p => p.Label.ToLower() == "original");
+                    string photoFormat = ".jpg";
+
+                    if (!String.IsNullOrEmpty(photo.Format)) photoFormat = "." + photo.Format;
+
+                    foreach (char c in System.IO.Path.GetInvalidFileNameChars())
+                    {
+                        photo.Title = photo.Title.Replace(c, '_');
+                    }
+
+                    var photoFile = await TargetFolder?.CreateFileAsync(photo.Title + photoFormat, Windows.Storage.CreationCollisionOption.ReplaceExisting);
+
+                    if (originalPhoto != null && photoFile != null)
+                    {
+                        HttpClient client = new HttpClient();
+                        Debug.WriteLine("Downloading:");
+                        Debug.WriteLine(originalPhoto.Source);
+                        byte[] buffer = await client.GetByteArrayAsync(originalPhoto.Source); // Download file
+                        using (Stream stream = await photoFile.OpenStreamForWriteAsync())
+                        {
+                            stream.Write(buffer, 0, buffer.Length); // Save
+                        }
+                        return true;
+                    }
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            return false;
+        }
 
         #region Settings Operations
 

@@ -13,17 +13,13 @@
     <Page.Resources>
         <convert:BoolToVisibilityConverter x:Key="BoolToVisConverter" />
         <convert:ReverseBoolToVisibilityConverter x:Key="ReverseBoolToVisConverter" />
+        <convert:StringFormatConverter x:Key="StringFormatConverter" />
     </Page.Resources>
 
     <Grid>
-        <VisualStateManager.VisualStateGroups>
-            <VisualStateGroup x:Name="ProcessStates">
-                <VisualState x:Name="VisualState"/>
-            </VisualStateGroup>
-        </VisualStateManager.VisualStateGroups>
         <Grid x:Name="StepOne" Visibility="{Binding IsApiUiVisible, Converter={StaticResource BoolToVisConverter}}">
             <StackPanel HorizontalAlignment="Center" Margin="0,100,0,0">
-                <TextBlock Text="Enter your Flickr API key" Margin="8" HorizontalAlignment="Center">
+                <TextBlock Text="Enter your Flickr API key" Margin="8" HorizontalAlignment="Center" TextWrapping="Wrap">
                 </TextBlock>
                 <TextBox x:Name="ApiKeyBox" Text="{Binding ApiKey, Mode=TwoWay}" KeyUp="TextBox_KeyUp"  Width="300" HorizontalAlignment="Center"/>
                 <Button Content="Apply This Key" Margin="8" Command="{Binding SetApiKeyCommand, Mode=OneWay}" HorizontalAlignment="Center"/>
@@ -33,7 +29,7 @@
         <Grid x:Name="MainGrid" Visibility="{Binding IsMainUiVisible, Converter={StaticResource BoolToVisConverter}}">
             <Grid x:Name="SelectFolderGrid" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsTargetFolderSelected, Converter={StaticResource ReverseBoolToVisConverter}}">
                 <StackPanel>
-                    <TextBlock Text="Select a folder to save your photos into" Margin="8" HorizontalAlignment="Center" />
+                    <TextBlock Text="Select a folder to save your photos into" Margin="8" HorizontalAlignment="Center" TextWrapping="Wrap" />
                     <Button Command="{Binding SelectTargetFolderCommand, Mode=OneWay}" Margin="8" HorizontalAlignment="Center">
                         <Grid>
                             <Grid.RowDefinitions>
@@ -48,19 +44,98 @@
             </Grid>
 
             <Grid x:Name="StandardScreen" Visibility="{Binding IsTargetFolderSelected, Converter={StaticResource BoolToVisConverter}}">
-                <TextBlock Text="Enter the username you'd like to offload" />
-                <TextBox Text="{Binding TargetUser, Mode=TwoWay}" />
-                <Button Command="{Binding GetFlickrUserCommand, Mode=OneWay}" Margin="8" HorizontalAlignment="Center">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xEB9F;" Margin="8" FontSize="120"/>
-                        <TextBlock Grid.Row="1" Text="get user photos" Margin="8"/>
-                    </Grid>
-                </Button> 
-
+                <Pivot Margin="8">
+                    <PivotItem x:Name="downloadPivot" Header="Download">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Enter the username you'd like to offload" Margin="8" TextWrapping="Wrap" />
+                                <TextBox x:Name="userEntryTextbox" Text="{Binding TargetUser, Mode=TwoWay}" Margin="8" />
+                                <Button Command="{Binding GetFlickrUserCommand, Mode=OneWay}" Margin="8" >
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xEB9F;" Margin="8" FontSize="120"/>
+                                        <TextBlock Grid.Row="1" Text="get user photos" Margin="8" HorizontalAlignment="Center"/>
+                                    </Grid>
+                                </Button>
+                            </StackPanel>
+                            <Grid x:Name="LoadingStatsGrid" Grid.Column="1" Visibility="{Binding IsCheckingPhotos, Converter={StaticResource BoolToVisConverter}}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <StackPanel>
+                                    <TextBlock Text="Gathering User Photo Information..." FontSize="32" />
+                                    <ProgressRing IsActive="{Binding IsCheckingPhotos}" Width="100" Height="100"/>
+                                </StackPanel>
+                            </Grid>
+                            <Grid x:Name="UserStats" Grid.Column="1" Margin="8" Visibility="{Binding IsCheckingPhotos, Converter={StaticResource ReverseBoolToVisConverter}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{Binding TotalPhotoCount, Converter={StaticResource StringFormatConverter}, ConverterParameter='Total Files: \{0\}'}" />
+                                    <TextBlock Grid.Row="1" Text="{Binding DownloadedFilesCount, Converter={StaticResource StringFormatConverter}, ConverterParameter='Photos Already Downloaded: \{0\}'}" />
+                                    <TextBlock Grid.Row="2" Text="{Binding EstimatedDownloadTime}" />
+                                    <TextBlock Grid.Row="3" Text="{Binding TargetFolder.Path, Converter={StaticResource StringFormatConverter}, ConverterParameter='Download Into: \{0\}'}" />
+                                    <Button Grid.Row="4" Command="{Binding DownloadAllPagesCommand, Mode=OneWay}" Margin="8" HorizontalAlignment="Center">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <FontIcon FontFamily="Segoe MDL2 Assets" Margin="8" FontSize="120" Glyph="&#xE896;"/>
+                                            <TextBlock Grid.Row="1" Text="download" Margin="8" HorizontalAlignment="Center"/>
+                                        </Grid>
+                                    </Button>
+                                </Grid>
+                                <Grid x:Name="DownloadStatusPane" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisConverter}}" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Image Source="{Binding DownloadingPhoto}" HorizontalAlignment="Left" Height="400" VerticalAlignment="Top" />
+                                    <TextBlock Grid.Row="1" Text="{Binding DownloadStatus}" />
+                                    <TextBlock Grid.Row="2" Text="{Binding RemainingDownloadTime}" />
+                                    <TextBlock Grid.Row="3" Text="{Binding RunningTime}" />
+                                    <ProgressBar Grid.Row="4" Value="{Binding PercentDone}" LargeChange="0.1" SmallChange="0.01" Maximum="1"  />
+                                </Grid>
+                            </Grid>
+                            
+                        </Grid>
+                    </PivotItem>
+                    <PivotItem x:Name="settingsPivot" Header="Settings">
+                        <Grid>
+                            <StackPanel>
+                                <TextBlock Text="Change Flickr API key" Margin="8" TextWrapping="Wrap" Style="{StaticResource SubtitleTextBlockStyle}">
+                                </TextBlock>
+                                <TextBox Text="{Binding ApiKey, Mode=TwoWay}" KeyUp="TextBox_KeyUp"  Width="300" Margin="8" HorizontalAlignment="Left" />
+                                <Button Content="Change Key" Margin="8" Command="{Binding SetApiKeyCommand, Mode=OneWay}" />
+                                <HyperlinkButton Content="Remind me how to get a Flickr API key" NavigateUri="https://www.flickr.com/services/api/misc.api_keys.html" Margin="8"/>
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Current Download Folder" Margin="8, 24, 8, 8" TextWrapping="Wrap" />
+                                <TextBlock Grid.Row="3" Text="{Binding TargetFolder.Path}" Margin="8" />
+                                <Button Content="Change Download Folder"  Command="{Binding SelectTargetFolderCommand, Mode=OneWay}" Margin="8" />
+                            </StackPanel>
+                        </Grid>
+                    </PivotItem>
+                </Pivot>
             </Grid>
 
         </Grid>
