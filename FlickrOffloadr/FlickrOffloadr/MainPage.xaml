@@ -23,7 +23,8 @@
                 </TextBlock>
                 <TextBox x:Name="ApiKeyBox" Text="{Binding ApiKey, Mode=TwoWay}" KeyUp="TextBox_KeyUp"  Width="300" HorizontalAlignment="Center"/>
                 <Button Content="Apply This Key" Margin="8" Command="{Binding SetApiKeyCommand, Mode=OneWay}" HorizontalAlignment="Center"/>
-                <HyperlinkButton Content="What is a Flickr API key and how do I get it?" NavigateUri="https://www.flickr.com/services/api/misc.api_keys.html" HorizontalAlignment="Center"/>
+                <HyperlinkButton Content="What is a Flickr API key and how do I get it?" NavigateUri="https://www.flickr.com/services/api/" HorizontalAlignment="Center"/>
+                <HyperlinkButton Content="Watch a video on getting the Flickr API Key" NavigateUri="https://youtu.be/Wv4c1eIC_h8" HorizontalAlignment="Center"/>
             </StackPanel>
         </Grid>
         <Grid x:Name="MainGrid" Visibility="{Binding IsMainUiVisible, Converter={StaticResource BoolToVisConverter}}">
@@ -67,8 +68,9 @@
                             </StackPanel>
                             <Grid x:Name="LoadingStatsGrid" Grid.Column="1" Visibility="{Binding IsCheckingPhotos, Converter={StaticResource BoolToVisConverter}}" HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <StackPanel>
-                                    <TextBlock Text="Gathering User Photo Information..." FontSize="32" />
-                                    <ProgressRing IsActive="{Binding IsCheckingPhotos}" Width="100" Height="100"/>
+                                    <TextBlock Text="Gathering User Photo Information..." FontSize="32" Margin="8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding GatherStatus}" FontSize="32" Margin="8" HorizontalAlignment="Center"/>
+                                    <ProgressRing IsActive="{Binding IsCheckingPhotos}" Width="100" Height="100" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Grid>
                             <Grid x:Name="UserStats" Grid.Column="1" Margin="8" Visibility="{Binding IsCheckingPhotos, Converter={StaticResource ReverseBoolToVisConverter}}">
@@ -103,19 +105,25 @@
                                         </Grid>
                                     </Button>
                                 </Grid>
-                                <Grid x:Name="DownloadStatusPane" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisConverter}}" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <Grid x:Name="DownloadStatusPane" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisConverter}}" 
+                                      Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Stretch">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
+
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Image Source="{Binding DownloadingPhoto}" HorizontalAlignment="Left" Height="400" VerticalAlignment="Top" />
-                                    <TextBlock Grid.Row="1" Text="{Binding DownloadStatus}" />
-                                    <TextBlock Grid.Row="2" Text="{Binding RemainingDownloadTime}" />
-                                    <TextBlock Grid.Row="3" Text="{Binding RunningTime}" />
-                                    <ProgressBar Grid.Row="4" Value="{Binding PercentDone}" LargeChange="0.1" SmallChange="0.01" Maximum="1"  />
+                                    <Border Height="400" Margin="8" HorizontalAlignment="Center" >
+                                        <Image Source="{Binding DownloadingPhoto}" />
+                                    </Border>
+                                    <TextBlock Grid.Row="1" Text="{Binding DownloadStatus}" Margin="8" />
+                                    <TextBlock Grid.Row="2" Text="{Binding RemainingDownloadTime}" Margin="8" />
+                                    <TextBlock Grid.Row="3" Text="{Binding RunningTime}" Margin="8" />
+                                    <ProgressBar Grid.Row="4" Value="{Binding PercentDone}" LargeChange="0.1" SmallChange="0.01" Maximum="1" Margin="8" />
+                                    <Button Width="200" FontSize="24" Content="Cancel" Command="{Binding CancelDownloadCommand, Mode=OneWay}" Grid.Row="5" Margin="8" />
                                 </Grid>
                             </Grid>
                             
@@ -128,7 +136,10 @@
                                 </TextBlock>
                                 <TextBox Text="{Binding ApiKey, Mode=TwoWay}" KeyUp="TextBox_KeyUp"  Width="300" Margin="8" HorizontalAlignment="Left" />
                                 <Button Content="Change Key" Margin="8" Command="{Binding SetApiKeyCommand, Mode=OneWay}" />
-                                <HyperlinkButton Content="Remind me how to get a Flickr API key" NavigateUri="https://www.flickr.com/services/api/misc.api_keys.html" Margin="8"/>
+                                <HyperlinkButton Content="Remind me how to get a Flickr API key" NavigateUri="https://www.flickr.com/services/api/" />
+                                <HyperlinkButton Content="Watch a video on getting the Flickr API Key" NavigateUri="https://youtu.be/Wv4c1eIC_h8" />
+
+
                                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Current Download Folder" Margin="8, 24, 8, 8" TextWrapping="Wrap" />
                                 <TextBlock Grid.Row="3" Text="{Binding TargetFolder.Path}" Margin="8" />
                                 <Button Content="Change Download Folder"  Command="{Binding SelectTargetFolderCommand, Mode=OneWay}" Margin="8" />

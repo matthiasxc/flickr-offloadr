@@ -170,6 +170,13 @@ namespace FlickrOffloadr.ViewModel
             set { Set(ref _downloadStatus, value); }
         }
 
+        private string _gatherStatus = "";
+        public string GatherStatus
+        {
+            get { return _gatherStatus; }
+            set { Set(ref _gatherStatus, value); }
+        }
+
         private string _runningTime = "";
         public string RunningTime
         {
@@ -206,6 +213,13 @@ namespace FlickrOffloadr.ViewModel
             set { Set(ref _downloadingPhoto, value); }
         }
 
+        private bool _isCancelled = false;
+        public bool IsCancelled
+        {
+            get { return _isCancelled;  }
+            set { Set(ref _isCancelled, value); } 
+        }
+
         #endregion
 
         #endregion
@@ -240,7 +254,7 @@ namespace FlickrOffloadr.ViewModel
             }
         }
 
-        #region Commands
+         #region Commands
 
         #region SetApiKeyCommand
         private RelayCommand _setApiCommand;
@@ -351,93 +365,86 @@ namespace FlickrOffloadr.ViewModel
                     ?? (_getPublicImagesCommand = new RelayCommand(
                     async () =>
                     {
-                        PublicPhotos.Clear();
-                        string publicPhotoUrl = String.Format(_publicPhotosUrl, _apiKey, _searchedUser.Id, CurrentPage);
-                        PublicPhotos publicPhotos = null;
-                        IsCheckingPhotos = true;
-                        using (var client = new HttpClient())
-                        {
-                            var result = await client.GetStringAsync(new Uri(publicPhotoUrl));
-
-                            publicPhotos = JsonConvert.DeserializeObject<PublicPhotos>(result);
-                        }
-
-                        if (publicPhotos != null)
-                        {
-
-                            //int currentPage = publicPhotos.Photos.Page;
-                            //int pageCount = publicPhotos.Photos.Pages;
-
-                            //for (int i = 0; i < publicPhotos.Photos.PhotoList.Count; i++)
-                            //{
-                            //    publicPhotos.Photos.PhotoList[i].PhotoDetailsUrl = String.Format(_photoSizesUrl, _apiKey, publicPhotos.Photos.PhotoList[i].Id);
-                            //    publicPhotos.Photos.PhotoList[i].PhotoThumb = String.Format("https://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg",
-                            //                                                                publicPhotos.Photos.PhotoList[i].Farm,
-                            //                                                                publicPhotos.Photos.PhotoList[i].Server,
-                            //                                                                publicPhotos.Photos.PhotoList[i].Id,
-                            //                                                                publicPhotos.Photos.PhotoList[i].Secret);
-                            //}
-
-                            TotalPhotoCount = System.Convert.ToInt32(publicPhotos.Photos.Total);
-                            PageCount = publicPhotos.Photos.Pages;
-                        }
-
-                        // Look at the already downloaded files in that directory. 
-                        //  Remove them from the list of files to download
-                        IReadOnlyList<StorageFile> fileList = await TargetFolder.GetFilesAsync();
-                        List<string> downloadedFiles = new List<string>();
-                        foreach (StorageFile file in fileList)
-                        {
-                            downloadedFiles.Add(file.Name);
-                        }
-
-                        for (int i = 1; i <= PageCount; i++)
-                        {
-                            Debug.WriteLine("Loading Photos from page " + i.ToString());
-                            string photoPageUrl = String.Format(_publicPhotosUrl, _apiKey, _searchedUser.Id, i);
-                            PublicPhotos publicPhotosHolder = null;
-                            using (var client = new HttpClient())
-                            {
-                                var result = await client.GetStringAsync(new Uri(photoPageUrl));
-
-                                publicPhotosHolder = JsonConvert.DeserializeObject<PublicPhotos>(result);
-                            }
-                            // select all the photos we haven't already downloaded
-                            foreach (Photo photo in publicPhotosHolder.Photos.PhotoList)
-                            {
-                                photo.PhotoDetailsUrl = String.Format(_photoSizesUrl, _apiKey, photo.Id);
-                                photo.PhotoThumb = String.Format("https://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg",
-                                                                                            photo.Farm,
-                                                                                            photo.Server,
-                                                                                            photo.Id,
-                                                                                            photo.Secret);
-                                PublicPhotos.Add(photo);
-
-                                foreach (char c in System.IO.Path.GetInvalidFileNameChars())
-                                {
-                                    photo.Title = photo.Title.Replace(c, '_');
-                                }
-
-                                var existingFile = downloadedFiles.FirstOrDefault(f => f.Contains(photo.Title));
-                                if (existingFile == null)
-                                {
-                                    PhotosToSave.Add(photo);
-                                }
-                                else
-                                {
-                                    DownloadedFilesCount++;
-                                    //Debug.WriteLine("Already Downloaded: " + photo.Title);
-                                }
-                            }
-
-                            await Task.Delay(100);
-                        }
-                        IsCheckingPhotos = false;
-
-                        TimeSpan estTime = new TimeSpan(0, 0, 0, 0, System.Convert.ToInt32(PhotosToSave.Count * _downloadDelay.TotalMilliseconds));
-                        EstimatedDownloadTime = "Estimated Download Time: " + estTime.ToString(@"hh\:mm\:ss");
+                        await GetPublicImages();
             }));
             }
+        }
+
+        private async Task GetPublicImages()
+        {
+            PublicPhotos.Clear();
+            string publicPhotoUrl = String.Format(_publicPhotosUrl, _apiKey, _searchedUser.Id, CurrentPage);
+            PublicPhotos publicPhotos = null;
+            IsCheckingPhotos = true;
+            using (var client = new HttpClient())
+            {
+                var result = await client.GetStringAsync(new Uri(publicPhotoUrl));
+
+                publicPhotos = JsonConvert.DeserializeObject<PublicPhotos>(result);
+            }
+
+            if (publicPhotos != null)
+            {
+                TotalPhotoCount = System.Convert.ToInt32(publicPhotos.Photos.Total);
+                PageCount = publicPhotos.Photos.Pages;
+            }
+
+            // Look at the already downloaded files in that directory. 
+            //  Remove them from the list of files to download
+            IReadOnlyList<StorageFile> fileList = await TargetFolder.GetFilesAsync();
+            List<string> downloadedFiles = new List<string>();
+            foreach (StorageFile file in fileList)
+            {
+                downloadedFiles.Add(file.Name);
+            }
+
+            for (int i = 1; i <= PageCount; i++)
+            {
+                Debug.WriteLine("Loading Photos from page " + i.ToString());
+                GatherStatus = String.Format("Loading page {0} of {1}", i, PageCount); 
+
+                string photoPageUrl = String.Format(_publicPhotosUrl, _apiKey, _searchedUser.Id, i);
+                PublicPhotos publicPhotosHolder = null;
+                using (var client = new HttpClient())
+                {
+                    var result = await client.GetStringAsync(new Uri(photoPageUrl));
+
+                    publicPhotosHolder = JsonConvert.DeserializeObject<PublicPhotos>(result);
+                }
+                // select all the photos we haven't already downloaded
+                foreach (Photo photo in publicPhotosHolder.Photos.PhotoList)
+                {
+                    photo.PhotoDetailsUrl = String.Format(_photoSizesUrl, _apiKey, photo.Id);
+                    photo.PhotoThumb = String.Format("https://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg",
+                                                                                photo.Farm,
+                                                                                photo.Server,
+                                                                                photo.Id,
+                                                                                photo.Secret);
+                    PublicPhotos.Add(photo);
+
+                    foreach (char c in System.IO.Path.GetInvalidFileNameChars())
+                    {
+                        photo.Title = photo.Title.Replace(c, '_');
+                    }
+
+                    var existingFile = downloadedFiles.FirstOrDefault(f => f.Contains(photo.Title));
+                    if (existingFile == null)
+                    {
+                        PhotosToSave.Add(photo);
+                    }
+                    else
+                    {
+                        DownloadedFilesCount++;
+                        //Debug.WriteLine("Already Downloaded: " + photo.Title);
+                    }
+                }
+
+                await Task.Delay(100);
+            }
+            IsCheckingPhotos = false;
+
+            TimeSpan estTime = new TimeSpan(0, 0, 0, 0, System.Convert.ToInt32(PhotosToSave.Count * _downloadDelay.TotalMilliseconds));
+            EstimatedDownloadTime = "Estimated Download Time: " + estTime.ToString(@"hh\:mm\:ss");
         }
         #endregion
 
@@ -456,11 +463,22 @@ namespace FlickrOffloadr.ViewModel
                 async () =>
                 {
                     IsDownloading = true;
+
+                    if (IsCancelled)
+                    {
+                        IsCancelled = false;
+                        await GetPublicImages();
+                    }
+
+
                     int photoDownloadCount = PhotosToSave.Count;
                     int currentCount = 0;
                     DateTime startTime = DateTime.Now;
                     for (int i = 0; i < PhotosToSave.Count; i++)
                     {
+                        if (IsCancelled)
+                            break;
+
                         currentCount++;
                         DownloadStatus = "Downloading Photo " + currentCount + " of " + PhotosToSave.Count;
 
@@ -512,12 +530,32 @@ namespace FlickrOffloadr.ViewModel
                 }));
             }
         }
+        #endregion
 
+        #region CancelDownloadCommand
+        private RelayCommand _cancelDownloadCommand;
+
+        /// <summary>
+        /// Gets the SelectAllPagesCommand.
+        /// </summary>
+        public RelayCommand CancelDownloadCommand
+        {
+            get
+            {
+                return _cancelDownloadCommand
+                ?? (_cancelDownloadCommand = new RelayCommand(
+                async () =>
+                {
+                    IsCancelled = true;
+                }));
+            }
+        }
+        
         #endregion
 
         #endregion
 
-        private async Task<bool> SaveFileFromPhotoDetails(Photo photo)
+                    private async Task<bool> SaveFileFromPhotoDetails(Photo photo)
         {
             if (photo.Details != null && photo.Details.CanDownload)
             {
