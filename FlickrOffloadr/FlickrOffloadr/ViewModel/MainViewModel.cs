@@ -32,12 +32,14 @@ namespace FlickrOffloadr.ViewModel
         private readonly string _publicPhotosUrl = "https://api.flickr.com/services/rest/?method=flickr.people.getPublicPhotos&api_key={0}&user_id={1}&per_page=500&format=json&nojsoncallback=1&page={2}";
         private readonly string _photoSizesUrl = "https://api.flickr.com/services/rest/?method=flickr.photos.getSizes&api_key={0}&photo_id={1}&format=json&nojsoncallback=1";
         private readonly string _photoDetails = " https://api.flickr.com/services/rest/?method=flickr.photos.getInfo&api_key={0}&photo_id={1}&format=json&nojsoncallback=1";
+        
 
         private readonly IDataService _dataService;
         private readonly INavigationService _navigationService;
         private readonly string _apiKeyValue = "flickrApiKey"; 
         private readonly string _lastUserKeyValue = "lastSearchedUser";
         private readonly string _targetFolderKeyValue = "targetFolderToken";
+        private readonly string _useFolderStructureValue = "useFolderStructureBool";
         private string _targetFolderToken = "";
 
         #region Properties 
@@ -220,6 +222,19 @@ namespace FlickrOffloadr.ViewModel
             set { Set(ref _isCancelled, value); } 
         }
 
+        private bool _useFolderStructure = true;
+        public bool UseFolderStructure
+        {
+            get { return _useFolderStructure; }
+            set
+            {
+                Set(ref _useFolderStructure, value);
+
+                Windows.Storage.ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+                localSettings.Values[_useFolderStructureValue] = _useFolderStructure;
+            }
+        }
+
         #endregion
 
         #endregion
@@ -274,6 +289,26 @@ namespace FlickrOffloadr.ViewModel
                         IsApiUiVisible = String.IsNullOrEmpty(ApiKey);
                         IsMainUiVisible = !IsApiUiVisible;
                         // TODO: test the api key to make sure it is valid
+                    }));
+            }
+        }
+        #endregion
+
+        #region SetFolderStructureCommand
+        private RelayCommand _setFolderStructureCommand;
+
+        /// <summary>
+        /// Gets the SetApiKeyCommand.
+        /// </summary>
+        public RelayCommand SetFolderStructureCommand
+        {
+            get
+            {
+                return _setFolderStructureCommand
+                    ?? (_setFolderStructureCommand = new RelayCommand(
+                    () =>
+                    {
+                        SaveSettings();
                     }));
             }
         }
@@ -341,6 +376,7 @@ namespace FlickrOffloadr.ViewModel
                                 return;
                             }
                         }
+                        SaveSettings();
 
                         // OK, we've got our user, let's grab the public photos
 
@@ -389,14 +425,15 @@ namespace FlickrOffloadr.ViewModel
                 PageCount = publicPhotos.Photos.Pages;
             }
 
-            // Look at the already downloaded files in that directory. 
-            //  Remove them from the list of files to download
-            IReadOnlyList<StorageFile> fileList = await TargetFolder.GetFilesAsync();
-            List<string> downloadedFiles = new List<string>();
-            foreach (StorageFile file in fileList)
-            {
-                downloadedFiles.Add(file.Name);
-            }
+            // Look at the already downloaded files in that directory.
+
+            ////  Remove them from the list of files to download 
+            //IReadOnlyList<StorageFile> fileList = await TargetFolder.GetFilesAsync();
+            List<string> downloadedFiles = await GetFilesInDirectory(TargetFolder);
+            //foreach (StorageFile file in fileList)
+            //{
+            //    downloadedFiles.Add(file.Name);
+            //}
 
             for (int i = 1; i <= PageCount; i++)
             {
@@ -427,7 +464,7 @@ namespace FlickrOffloadr.ViewModel
                         photo.Title = photo.Title.Replace(c, '_');
                     }
 
-                    var existingFile = downloadedFiles.FirstOrDefault(f => f.Contains(photo.Title));
+                    var existingFile = downloadedFiles.FirstOrDefault(f => f.Contains(photo.Title + "_" + photo.Secret));
                     if (existingFile == null)
                     {
                         PhotosToSave.Add(photo);
@@ -550,12 +587,11 @@ namespace FlickrOffloadr.ViewModel
                 }));
             }
         }
-        
-        #endregion
 
         #endregion
 
-                    private async Task<bool> SaveFileFromPhotoDetails(Photo photo)
+        #endregion
+        private async Task<bool> SaveFileFromPhotoDetails(Photo photo)
         {
             if (photo.Details != null && photo.Details.CanDownload)
             {
@@ -571,7 +607,20 @@ namespace FlickrOffloadr.ViewModel
                         photo.Title = photo.Title.Replace(c, '_');
                     }
 
-                    var photoFile = await TargetFolder?.CreateFileAsync(photo.Title + photoFormat, Windows.Storage.CreationCollisionOption.ReplaceExisting);
+                    StorageFile photoFile = null;
+
+                    // Look for a year / month folder for the target folder to download into
+                    if (photo.Dates.DateTaken != null && UseFolderStructure)
+                    {
+                        var yearFolder = await TargetFolder.CreateFolderAsync(photo.Dates.DateTaken.Year.ToString(), CreationCollisionOption.OpenIfExists);
+                        var monthFolder = await yearFolder?.CreateFolderAsync(photo.Dates.DateTaken.Month.ToString(), CreationCollisionOption.OpenIfExists);
+                        photoFile = await monthFolder?.CreateFileAsync(photo.Title + "_" + photo.Secret + photoFormat, Windows.Storage.CreationCollisionOption.ReplaceExisting);
+                    }
+                    
+                    if(photoFile == null)
+                    {
+                        photoFile = await TargetFolder?.CreateFileAsync(photo.Title + "_" + photo.Secret + photoFormat, Windows.Storage.CreationCollisionOption.ReplaceExisting);
+                    }
 
                     if (originalPhoto != null && photoFile != null)
                     {
@@ -602,6 +651,7 @@ namespace FlickrOffloadr.ViewModel
             var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
             localSettings.Values[_apiKeyValue] = _apiKey;
             localSettings.Values[_lastUserKeyValue] = _targetUser;
+
             if(_targetFolder != null)
             { 
                 localSettings.Values[_targetFolderKeyValue] = StorageApplicationPermissions.FutureAccessList.Add(_targetFolder);
@@ -612,12 +662,17 @@ namespace FlickrOffloadr.ViewModel
         {
             var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
 
+            if (localSettings.Values.ContainsKey(_useFolderStructureValue))
+            {
+                UseFolderStructure = (bool)localSettings.Values[_useFolderStructureValue];
+            }
+
             if (localSettings.Values.ContainsKey(_apiKeyValue))
             {
                 ApiKey = (string)localSettings.Values[_apiKeyValue];
             }
 
-            if (localSettings.Values.ContainsKey(_apiKeyValue))
+            if (localSettings.Values.ContainsKey(_lastUserKeyValue))
             {
                 TargetUser = (string)localSettings.Values[_lastUserKeyValue];
             }
@@ -627,6 +682,26 @@ namespace FlickrOffloadr.ViewModel
                 string token = (string)localSettings.Values[_targetFolderKeyValue];
                 TargetFolder = await StorageApplicationPermissions.FutureAccessList.GetFolderAsync(token);
             }            
+        }
+
+        private async Task<List<string>> GetFilesInDirectory(StorageFolder folder)
+        {
+            List<string> allFiles = new List<string>();
+
+            IReadOnlyList<StorageFile> fileList = await TargetFolder.GetFilesAsync();
+            foreach (StorageFile file in fileList)
+            {
+                allFiles.Add(file.Name);
+            }
+
+            var subfolders = await folder.GetFoldersAsync();
+            foreach (var f in subfolders)
+            {
+                var subFiles = await GetFilesInDirectory(f);
+                allFiles.Concat(subFiles);
+            }
+
+            return allFiles;
         }
 
 

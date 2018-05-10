@@ -143,6 +143,9 @@
                                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Current Download Folder" Margin="8, 24, 8, 8" TextWrapping="Wrap" />
                                 <TextBlock Grid.Row="3" Text="{Binding TargetFolder.Path}" Margin="8" />
                                 <Button Content="Change Download Folder"  Command="{Binding SelectTargetFolderCommand, Mode=OneWay}" Margin="8" />
+                                <CheckBox Content="Download photos into folders by year and month"
+                                          IsChecked="{Binding UseFolderStructure, Mode=TwoWay}"                                           
+                                          />
                             </StackPanel>
                         </Grid>
                     </PivotItem>
