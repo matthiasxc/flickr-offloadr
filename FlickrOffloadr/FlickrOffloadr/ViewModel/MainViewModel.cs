@@ -158,7 +158,7 @@ namespace FlickrOffloadr.ViewModel
             set { Set(ref _remainingDownloadTime, value); }
         }
 
-        private TimeSpan _downloadDelay = new TimeSpan(0, 0, 0, 0, 2300);
+        private TimeSpan _downloadDelay = new TimeSpan(0, 0, 0, 0, 1800);
         public TimeSpan DownloadDelay
         {
             get { return _downloadDelay; }
@@ -429,6 +429,7 @@ namespace FlickrOffloadr.ViewModel
 
             ////  Remove them from the list of files to download 
             //IReadOnlyList<StorageFile> fileList = await TargetFolder.GetFilesAsync();
+            GatherStatus = "Checking Existing Photos... ";
             List<string> downloadedFiles = await GetFilesInDirectory(TargetFolder);
             //foreach (StorageFile file in fileList)
             //{
@@ -480,7 +481,7 @@ namespace FlickrOffloadr.ViewModel
             }
             IsCheckingPhotos = false;
 
-            TimeSpan estTime = new TimeSpan(0, 0, 0, 0, System.Convert.ToInt32(PhotosToSave.Count * _downloadDelay.TotalMilliseconds));
+            TimeSpan estTime = new TimeSpan(0, 0, 0, 0, System.Convert.ToInt32(PhotosToSave.Count * (_downloadDelay.TotalMilliseconds + 2000)));
             EstimatedDownloadTime = "Estimated Download Time: " + estTime.ToString(@"hh\:mm\:ss");
         }
         #endregion
@@ -542,7 +543,7 @@ namespace FlickrOffloadr.ViewModel
                                 PhotosToSave[i].Details = photoDetailsResult.Sizes;
                             }
 
-                            TimeSpan remainingTime = new TimeSpan(0, 0, 0, 0, System.Convert.ToInt32((PhotosToSave.Count - i) * _downloadDelay.TotalMilliseconds));
+                            TimeSpan remainingTime = new TimeSpan(0, 0, 0, 0, System.Convert.ToInt32((PhotosToSave.Count - i) * (_downloadDelay.TotalMilliseconds+2000)));
                             RemainingDownloadTime = "Download Complete in: " + remainingTime.ToString(@"hh\:mm\:ss");
 
                             TimeSpan runningTime = DateTime.Now - startTime;
@@ -688,7 +689,7 @@ namespace FlickrOffloadr.ViewModel
         {
             List<string> allFiles = new List<string>();
 
-            IReadOnlyList<StorageFile> fileList = await TargetFolder.GetFilesAsync();
+            IReadOnlyList<StorageFile> fileList = await folder.GetFilesAsync();
             foreach (StorageFile file in fileList)
             {
                 allFiles.Add(file.Name);
@@ -698,7 +699,7 @@ namespace FlickrOffloadr.ViewModel
             foreach (var f in subfolders)
             {
                 var subFiles = await GetFilesInDirectory(f);
-                allFiles.Concat(subFiles);
+                allFiles.AddRange(subFiles);
             }
 
             return allFiles;
