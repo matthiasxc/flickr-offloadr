@@ -431,6 +431,7 @@ namespace FlickrOffloadr.ViewModel
             //IReadOnlyList<StorageFile> fileList = await TargetFolder.GetFilesAsync();
             GatherStatus = "Checking Existing Photos... ";
             List<string> downloadedFiles = await GetFilesInDirectory(TargetFolder);
+            DownloadedFilesCount = 0;
             //foreach (StorageFile file in fileList)
             //{
             //    downloadedFiles.Add(file.Name);

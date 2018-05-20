@@ -1,6 +1,7 @@
 ﻿using Windows.UI.Core;
 using Windows.UI.Xaml.Navigation;
 using FlickrOffloadr.ViewModel;
+using Windows.ApplicationModel;
 
 namespace FlickrOffloadr
 {
@@ -16,6 +17,14 @@ namespace FlickrOffloadr
 
             Loaded += (s, e) =>
             {
+
+                Package package = Package.Current;
+                PackageId packageId = package.Id;
+                PackageVersion version = packageId.Version;
+                string versionNum = string.Format("{0}.{1}.{2}.{3}", version.Major, version.Minor, version.Build, version.Revision);
+
+                VersionText.Text = "Flickr Uploadr v. " + versionNum;
+             
             };
         }
 

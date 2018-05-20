@@ -146,6 +146,7 @@
                                 <CheckBox Content="Download photos into folders by year and month"
                                           IsChecked="{Binding UseFolderStructure, Mode=TwoWay}"                                           
                                           />
+                                <TextBlock x:Name="VersionText" Margin="8, 24, 8, 8" />
                             </StackPanel>
                         </Grid>
                     </PivotItem>
