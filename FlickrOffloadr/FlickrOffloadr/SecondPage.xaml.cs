@@ -1,7 +1,7 @@
 ﻿using Windows.UI.Xaml;
 using Windows.UI.Xaml.Navigation;
 using GalaSoft.MvvmLight.Views;
-using Microsoft.Practices.ServiceLocation;
+using CommonServiceLocator;
 
 namespace FlickrOffloadr
 {

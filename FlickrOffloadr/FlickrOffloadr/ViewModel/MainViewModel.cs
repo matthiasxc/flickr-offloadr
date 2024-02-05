@@ -5,7 +5,7 @@ using GalaSoft.MvvmLight.Command;
 using GalaSoft.MvvmLight.Messaging;
 using GalaSoft.MvvmLight.Threading;
 using GalaSoft.MvvmLight.Views;
-using Microsoft.Practices.ServiceLocation;
+using CommonServiceLocator;
 using FlickrOffloadr.Model;
 using Windows.Storage;
 using Windows.Storage.AccessCache;
